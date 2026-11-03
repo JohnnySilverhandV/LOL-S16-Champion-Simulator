@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S16 全球总决赛 · 淘汰赛模拟器</title>
+<style>
+  :root{
+    --bg:#0a0e1a;
+    --glass:rgba(22,28,48,.55);
+    --glass-brd:rgba(120,160,255,.18);
+    --cyan:#00e5ff;
+    --magenta:#ff2ec4;
+    --gold:#ffd257;
+    --txt:#e8eeff;
+    --dim:#8a96b8;
+    --win:#5cff9d;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    min-height:100vh;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    overflow-x:hidden;position:relative;
+  }
+  /* 背景霓虹光斑 */
+  .blob{position:fixed;border-radius:50%;filter:blur(120px);opacity:.35;pointer-events:none;z-index:0}
+  .b1{width:520px;height:520px;background:#0af;top:-160px;left:-140px;animation:drift 14s ease-in-out infinite alternate}
+  .b2{width:460px;height:460px;background:#f0f;bottom:-160px;right:-120px;animation:drift 18s ease-in-out infinite alternate-reverse}
+  .b3{width:360px;height:360px;background:#0057ff;top:40%;left:55%;opacity:.22;animation:drift 22s ease-in-out infinite alternate}
+  @keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.12)}}
+
+  header{position:relative;z-index:2;text-align:center;padding:38px 16px 10px}
+  header h1{
+    font-size:30px;letter-spacing:6px;font-weight:800;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  header p{color:var(--dim);margin-top:8px;font-size:13px;letter-spacing:2px}
+  .reset-bar{text-align:center;z-index:2;position:relative;margin:14px 0 4px}
+  .reset-bar button{
+    background:rgba(255,255,255,.06);color:var(--dim);border:1px solid var(--glass-brd);
+    padding:7px 18px;border-radius:20px;cursor:pointer;font-size:12px;letter-spacing:2px;
+    backdrop-filter:blur(8px);transition:.2s;
+  }
+  .reset-bar button:hover{color:var(--magenta);border-color:var(--magenta)}
+
+  /* ===== 对阵图 ===== */
+  .bracket{
+    position:relative;z-index:2;display:flex;gap:34px;
+    padding:30px 40px 60px;max-width:1400px;margin:0 auto;align-items:stretch;
+  }
+  .round{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:26px;min-width:250px}
+  .round-title{
+    text-align:center;font-size:13px;letter-spacing:4px;color:var(--dim);
+    padding-bottom:2px;border-bottom:1px solid var(--glass-brd);margin-bottom:6px;
+  }
+  .match{
+    background:var(--glass);border:1px solid var(--glass-brd);border-radius:14px;
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    cursor:pointer;overflow:hidden;transition:transform .18s,border-color .18s,box-shadow .18s;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);
+  }
+  .match:hover{transform:translateY(-3px);border-color:var(--cyan);box-shadow:0 10px 36px rgba(0,229,255,.22)}
+  .match.locked-dim{opacity:.55}
+  .m-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:8px 14px;font-size:11px;color:var(--dim);letter-spacing:1px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .m-head .badge{color:var(--cyan)}
+  .team-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;gap:8px;transition:background .15s;
+  }
+  .team-row+.team-row{border-top:1px dashed rgba(255,255,255,.08)}
+  .team-row .tname{font-size:16px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+  .team-row .tname .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .team-row .tscore{
+    font-size:18px;font-weight:800;min-width:26px;text-align:center;
+    color:var(--dim);font-variant-numeric:tabular-nums;
+  }
+  .team-row.win .tscore{color:var(--win);text-shadow:0 0 10px rgba(92,255,157,.6)}
+  .team-row.win .tname{color:var(--win)}
+  .team-row.lose{opacity:.45}
+  .team-row.pending{color:var(--dim)}
+  .m-foot{
+    padding:6px 14px 9px;font-size:10px;color:var(--dim);letter-spacing:2px;
+    display:flex;justify-content:space-between;
+  }
+  .m-foot .tip{color:rgba(0,229,255,.75)}
+
+  /* 冠军卡 */
+  .champ-col{flex:.9;display:flex;flex-direction:column;justify-content:center}
+  .champ{
+    background:linear-gradient(160deg,rgba(255,210,87,.12),rgba(255,46,196,.08));
+    border:1px solid rgba(255,210,87,.4);border-radius:18px;text-align:center;
+    padding:36px 20px;backdrop-filter:blur(16px);box-shadow:0 0 50px rgba(255,210,87,.15);
+  }
+  .champ .trophy{font-size:52px;filter:drop-shadow(0 0 14px rgba(255,210,87,.7));animation:glow 2.4s ease-in-out infinite}
+  @keyframes glow{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+  .champ .label{color:var(--gold);letter-spacing:5px;font-size:13px;margin:14px 0 6px}
+  .champ .name{font-size:34px;font-weight:900;letter-spacing:3px}
+  .champ .name.empty{color:var(--dim);font-size:20px;font-weight:400;letter-spacing:2px}
+  .champ .sub{color:var(--dim);font-size:12px;margin-top:10px;letter-spacing:2px}
+
+  /* ===== 弹窗 ===== */
+  .overlay{
+    position:fixed;inset:0;background:rgba(5,8,18,.6);backdrop-filter:blur(6px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .overlay.show{display:flex;animation:fade .2s}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{
+    background:var(--glass);border:1px solid var(--glass-brd);border-radius:18px;
+    backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    width:min(720px,100%);box-shadow:0 20px 60px rgba(0,0,0,.6);
+    animation:pop .25s cubic-bezier(.2,1.4,.4,1);overflow:hidden;
+  }
+  @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .modal-head .stage{font-size:12px;color:var(--dim);letter-spacing:2px}
+  .modal-head .close{cursor:pointer;color:var(--dim);font-size:20px;line-height:1;padding:4px 8px;border-radius:6px}
+  .modal-head .close:hover{color:var(--magenta);background:rgba(255,255,255,.06)}
+  .vs-banner{
+    display:flex;align-items:center;justify-content:center;gap:22px;
+    padding:20px 20px 8px;
+  }
+  .vs-banner .side{font-size:30px;font-weight:900;letter-spacing:2px;text-align:center;flex:1}
+  .vs-banner .side small{display:block;font-size:11px;color:var(--dim);font-weight:400;letter-spacing:3px;margin-bottom:2px}
+  .vs-banner .vs{
+    font-size:20px;font-weight:900;font-style:italic;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .roster{padding:12px 22px 4px}
+  .pos-row{
+    display:grid;grid-template-columns:1fr 92px 1fr;align-items:center;gap:10px;
+    padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.07);
+  }
+  .pos-row:last-child{border-bottom:none}
+  .pos-row .p-name{font-size:15px;font-weight:600;text-align:center}
+  .pos-row .pos{
+    text-align:center;font-size:11px;letter-spacing:3px;color:var(--dim);
+    background:rgba(255,255,255,.05);border-radius:10px;padding:4px 0;
+  }
+  .score-zone{display:flex;align-items:center;justify-content:center;gap:26px;padding:18px 20px 8px}
+  .score-ctl{display:flex;align-items:center;gap:14px}
+  .score-ctl .num{font-size:40px;font-weight:900;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+  .score-ctl .num.s0{color:var(--dim)}
+  .score-ctl button{
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--glass-brd);
+    background:rgba(255,255,255,.06);color:var(--txt);font-size:18px;cursor:pointer;transition:.15s;
+  }
+  .score-ctl button:hover{border-color:var(--cyan);color:var(--cyan)}
+  .score-ctl button:disabled{opacity:.3;cursor:not-allowed}
+  .colon{font-size:30px;color:var(--dim);font-weight:300}
+  .confirm-zone{text-align:center;padding:8px 20px 22px}
+  .confirm-zone button{
+    background:linear-gradient(90deg,rgba(0,229,255,.2),rgba(255,46,196,.2));
+    border:1px solid var(--cyan);color:var(--txt);font-size:14px;letter-spacing:4px;
+    padding:11px 44px;border-radius:26px;cursor:pointer;transition:.2s;font-weight:700;
+  }
+  .confirm-zone button:hover{box-shadow:0 0 24px rgba(0,229,255,.4);transform:translateY(-1px)}
+  .confirm-zone .warn{color:var(--magenta);font-size:12px;height:16px;margin-top:8px;letter-spacing:1px}
+  .confirm-zone .result{color:var(--win);font-size:13px;margin-top:8px;letter-spacing:2px;animation:fade .3s}
+  .shake{animation:shake .3s}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<header>
+  <h1>S16 全球总决赛 · 淘汰赛模拟</h1>
+  <p>点击任意对阵 → 编辑 5v5 对位与比分 → 胜者自动晋级 | 冠军由此诞生</p>
+</header>
+<div class="reset-bar"><button onclick="resetAll()">↺ 重置模拟</button></div>
+
+<div class="bracket" id="bracket"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+/* ================= 数据 ================= */
+const TEAMS = {
+  TES : {name:"TES",  color:"#ff4b2e", roster:{上路:"369",打野:"Tian",中路:"Creme",下路:"JackeyLove",辅助:"Zhuo"}},
+  IG  : {name:"IG",   color:"#3ac2ff", roster:{上路:"TheShy",打野:"Wei",中路:"Rookie",下路:"JiaQi",辅助:"Meiko"}},
+  GEN : {name:"GEN",  color:"#c9a227", roster:{上路:"Kiin",打野:"Canyon",中路:"Chovy",下路:"Ruler",辅助:"Duro"}},
+  LYON: {name:"LYON", color:"#7bd389", roster:{上路:"Dhokla",打野:"Inspired",中路:"Saint",下路:"Berserker",辅助:"Isles"}},
+  DK  : {name:"DK",   color:"#5ac8fa", roster:{上路:"Siwoo",打野:"Lucid",中路:"ShowMaker",下路:"Smash",辅助:"Career"}},
+  BLG : {name:"BLG",  color:"#9b7bff", roster:{上路:"Bin",打野:"Xun",中路:"Knight",下路:"Viper",辅助:"ON"}},
+  T1  : {name:"T1",   color:"#ff2e4c", roster:{上路:"Doran",打野:"Oner",中路:"Faker",下路:"Peyz",辅助:"Keria"}},
+  KC  : {name:"KC",   color:"#00c2a8", roster:{上路:"Canna",打野:"Yike",中路:"kyeahoo",下路:"Caliste",辅助:"Busio"}},
+};
+const POS = ["上路","打野","中路","下路","辅助"];
+
+const MATCHES = [
+  {id:"qf1", round:0, stage:"淘汰赛 · 四分之一决赛", time:"11月04日 06:00", teams:["TES","IG"]},
+  {id:"qf2", round:0, stage:"淘汰赛 · 四分之一决赛", time:"11月05日 06:00", teams:["GEN","LYON"]},
+  {id:"qf3", round:0, stage:"淘汰赛 · 四分之一决赛", time:"11月06日 06:00", teams:["DK","BLG"]},
+  {id:"qf4", round:0, stage:"淘汰赛 · 四分之一决赛", time:"11月07日 06:00", teams:["T1","KC"]},
+  {id:"sf1", round:1, stage:"淘汰赛 · 半决赛", time:"11月08日 06:00", teams:[null,null]},
+  {id:"sf2", round:1, stage:"淘汰赛 · 半决赛", time:"11月09日 06:00", teams:[null,null]},
+  {id:"fin", round:2, stage:"总决赛", time:"11月15日 03:00", teams:[null,null]},
+];
+const ROUND_NAMES = ["四分之一决赛","半决赛","总决赛"];
+const LINK = {qf1:["sf1",0], qf2:["sf1",1], qf3:["sf2",0], qf4:["sf2",1], sf1:["fin",0], sf2:["fin",1]};
+
+/* ================= 状态 ================= */
+let state = load() || {scores:{qf1:[0,0],qf2:[0,0],qf3:[0,0],qf4:[0,0],sf1:[0,0],sf2:[0,0],fin:[0,0]},
+                       teams:{qf1:["TES","IG"],qf2:["GEN","LYON"],qf3:["DK","BLG"],qf4:["T1","KC"],sf1:[null,null],sf2:[null,null],fin:[null,null]},
+                       champion:null};
+function save(){localStorage.setItem("s16bracket",JSON.stringify(state));}
+function load(){try{return JSON.parse(localStorage.getItem("s16bracket"));}catch(e){return null;}}
+
+function winnerOf(id){
+  const [a,b] = state.scores[id];
+  if(a===b||(a===0&&b===0)) return null;
+  return state.teams[id][a>b?0:1];
+}
+/* 胜者向下传递；下游队伍变化时清空下游比分并级联 */
+function propagate(){
+  for(const m of MATCHES){
+    if(m.round===0) continue;
+    const srcs = Object.entries(LINK).filter(([,v])=>v[0]===m.id);
+    const newTeams = srcs.map(([src])=>{const w=winnerOf(src);return w!==undefined?w:null;});
+    const old = state.teams[m.id];
+    const changed = newTeams.some((t,i)=>(t||null)!==(old[i]||null));
+    state.teams[m.id] = newTeams;
+    if(changed){state.scores[m.id]=[0,0];}
+  }
+  const fw = winnerOf("fin");
+  state.champion = fw||null;
+  save();
+}
+function resetAll(){
+  localStorage.removeItem("s16bracket");
+  state = {scores:{qf1:[0,0],qf2:[0,0],qf3:[0,0],qf4:[0,0],sf1:[0,0],sf2:[0,0],fin:[0,0]},
+           teams:{qf1:["TES","IG"],qf2:["GEN","LYON"],qf3:["DK","BLG"],qf4:["T1","KC"],sf1:[null,null],sf2:[null,null],fin:[null,null]},
+           champion:null};
+  save(); render();
+}
+
+/* ================= 渲染 ================= */
+function teamHtml(tKey, score, isWin, isLose){
+  if(!tKey) return `<div class="team-row pending"><span class="tname"><span class="dot" style="background:#3a4468"></span>? 待定</span><span class="tscore">-</span></div>`;
+  const t = TEAMS[tKey];
+  return `<div class="team-row ${isWin?'win':''} ${isLose?'lose':''}">
+    <span class="tname"><span class="dot" style="background:${t.color};box-shadow:0 0 8px ${t.color}"></span>${t.name}</span>
+    <span class="tscore">${score}</span></div>`;
+}
+function render(){
+  propagate();
+  const br = document.getElementById("bracket");
+  let html = "";
+  for(let r=0;r<3;r++){
+    html += `<div class="round"><div class="round-title">${ROUND_NAMES[r]}</div>`;
+    for(const m of MATCHES.filter(x=>x.round===r)){
+      const s = state.scores[m.id];
+      const w = winnerOf(m.id);
+      const ready = state.teams[m.id].every(t=>t);
+      html += `<div class="match ${ready?'':'locked-dim'}" onclick="openMatch('${m.id}')">
+        <div class="m-head"><span>${m.stage}</span><span class="badge">${m.time}</span></div>
+        ${teamHtml(state.teams[m.id][0], s[0], w&&w===state.teams[m.id][0], w&&w!==state.teams[m.id][0])}
+        ${teamHtml(state.teams[m.id][1], s[1], w&&w===state.teams[m.id][1], w&&w!==state.teams[m.id][1])}
+        <div class="m-foot"><span>BO5</span><span class="tip">${ready?'点击编辑 ▸':''}</span></div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  html += `<div class="champ-col"><div class="champ">
+    <div class="trophy">🏆</div>
+    <div class="label">S16 世界冠军</div>
+    <div class="name ${state.champion?'':'empty'}">${state.champion?state.champion:'虚位以待'}</div>
+    <div class="sub">${state.champion?TEAMS[state.champion].name+' · Summoner\'s Cup':'完成全部模拟以决出冠军'}</div>
+  </div></div>`;
+  br.innerHTML = html;
+}
+
+/* ================= 弹窗 ================= */
+let curId = null;
+function openMatch(id){
+  curId = id;
+  const m = MATCHES.find(x=>x.id===id);
+  if(!state.teams[id].every(t=>t)){ return; }
+  renderModal();
+  document.getElementById("overlay").classList.add("show");
+}
+function renderModal(){
+  const id = curId, m = MATCHES.find(x=>x.id===id);
+  const [tA,tB] = state.teams[id].map(k=>TEAMS[k]);
+  const [sA,sB] = state.scores[id];
+  const rows = POS.map(p=>`<div class="pos-row">
+      <div class="p-name" style="color:${tA.color}">${tA.roster[p]}</div>
+      <div class="pos">${p}</div>
+      <div class="p-name" style="color:${tB.color}">${tB.roster[p]}</div>
+    </div>`).join("");
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><span class="stage">${m.stage} · ${m.time} · BO5</span><span class="close" onclick="closeModal()">✕</span></div>
+    <div class="vs-banner">
+      <div class="side" style="color:${tA.color}"><small>${tA.name}</small>${sA}</div>
+      <div class="vs">VS</div>
+      <div class="side" style="color:${tB.color}"><small>${tB.name}</small>${sB}</div>
+    </div>
+    <div class="roster">${rows}</div>
+    <div class="score-zone">
+      <div class="score-ctl">
+        <button onclick="chScore(0,-1)">−</button>
+        <div class="num ${sA===0?'s0':''}" id="n0">${sA}</div>
+        <button onclick="chScore(0,1)" ${sA>=5?'disabled':''}>＋</button>
+      </div>
+      <div class="colon">:</div>
+      <div class="score-ctl">
+        <button onclick="chScore(1,-1)">−</button>
+        <div class="num ${sB===0?'s0':''}" id="n1">${sB}</div>
+        <button onclick="chScore(1,1)" ${sB>=5?'disabled':''}>＋</button>
+      </div>
+    </div>
+    <div class="confirm-zone">
+      <button onclick="confirmScore()">确认比分</button>
+      <div class="warn" id="warn"></div>
+    </div>`;
+}
+function chScore(i,d){
+  const s = state.scores[curId];
+  s[i] = Math.min(5, Math.max(0, s[i]+d));
+  renderModal();
+}
+function confirmScore(){
+  const [a,b] = state.scores[curId];
+  const warn = document.getElementById("warn");
+  if(a===b||(a===0&&b===0)){
+    warn.textContent = a===0&&b===0 ? "尚未进行模拟，请先设置比分" : "BO5 不允许平局，请分出胜负";
+    warn.classList.remove("shake"); void warn.offsetWidth; warn.classList.add("shake");
+    return;
+  }
+  const w = winnerOf(curId);
+  warn.outerHTML = `<div class="result">✔ ${TEAMS[w].name} ${Math.max(a,b)}:${Math.min(a,b)} 晋级下一轮</div>`;
+  propagate(); render();
+  setTimeout(closeModal, 900);
+}
+function closeModal(){
+  document.getElementById("overlay").classList.remove("show");
+  render();
+}
+document.getElementById("overlay").addEventListener("click",e=>{
+  if(e.target.id==="overlay") closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
