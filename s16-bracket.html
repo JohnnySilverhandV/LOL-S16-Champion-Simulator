@@ -162,6 +162,16 @@
   }
   .pos-row:last-child{border-bottom:none}
   .pos-row .p-name{font-size:14px;font-weight:600;text-align:center;word-break:break-all;line-height:1.4}
+  /* GEN：名字左半暗黄、右半黑（描边保证黑段可见） */
+  .pos-row .p-name.gen-name{
+    background:linear-gradient(90deg,#c8a22a 0 50%,#0a0a0c 50% 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 1.2px rgba(255,255,255,.6));
+  }
+  /* DK：名字纯黑（浅描边保证可见） */
+  .pos-row .p-name.dk-name{color:#0a0a0c;filter:drop-shadow(0 0 1.2px rgba(255,255,255,.65))}
+  /* BLG：名字末位字母粉色 */
+  .pos-row .p-name .blg-tail{color:#ff5ec4;text-shadow:0 0 9px rgba(255,94,196,.7)}
   .pos-row .pos{text-align:center;font-size:10px;letter-spacing:2px;color:var(--dim);background:rgba(255,255,255,.05);border-radius:10px;padding:4px 0}
   .score-zone{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 12px 4px}
   .score-ctl{display:flex;align-items:center;gap:8px}
@@ -261,7 +271,7 @@ const TEAMS = {
   DK  : {name:"DK",   dot:"#0b0b0d", glow:"rgba(150,162,182,.55)", text:"#d5dced", roster:{上路:"Siwoo",打野:"Lucid",中路:"ShowMaker",下路:"Smash",辅助:"Career"}},
   BLG : {name:"BLG",  dot:"radial-gradient(circle at 72% 28%,#ff5ec4 0 36%,#6fd0ff 46% 100%)", glow:"rgba(111,208,255,.75)", text:"#7fd4ff", roster:{上路:"Bin",打野:"Xun",中路:"Knight",下路:"Viper",辅助:"ON"}},
   T1  : {name:"T1",   dot:"#ff0000", glow:"rgba(255,0,0,.8)", text:"#ff3a3a", roster:{上路:"Doran",打野:"Oner",中路:"Faker",下路:"Peyz",辅助:"Keria"}},
-  KC  : {name:"KC",   dot:"#9fe4ff", glow:"rgba(159,228,255,.8)", text:"#a8e6ff", roster:{上路:"Canna",打野:"Yike",中路:"kyeahoo",下路:"Caliste",辅助:"Busio"}},
+  KC  : {name:"KC",   dot:"#2ea8ff", glow:"rgba(46,168,255,.85)", text:"#5cbaff", roster:{上路:"Canna",打野:"Yike",中路:"kyeahoo",下路:"Caliste",辅助:"Busio"}},
 };
 const POS = ["上路","打野","中路","下路","辅助"];
 
@@ -412,10 +422,27 @@ function openMatch(id){
   document.getElementById("overlay").classList.add("show");
 }
 
+/* 选手名渲染：支持战队专属配色（GEN 双色 / BLG 尾字母粉 / DK 黑） */
+function playerCell(key, name){
+  const t = TEAMS[key];
+  if(key === "GEN"){
+    return `<div class="p-name gen-name">${name}</div>`;
+  }
+  if(key === "BLG"){
+    const head = name.slice(0, -1), last = name.slice(-1);
+    return `<div class="p-name" style="color:${t.text}">${head}<span class="blg-tail">${last}</span></div>`;
+  }
+  if(key === "DK"){
+    return `<div class="p-name dk-name">${name}</div>`;
+  }
+  return `<div class="p-name" style="color:${t.text}">${name}</div>`;
+}
+
 function renderModal(){
   const id = curId;
   const m = MATCHES.find(x => x.id === id);
-  const [tA, tB] = state.teams[id].map(k => TEAMS[k]);
+  const keys = state.teams[id];
+  const tA = TEAMS[keys[0]], tB = TEAMS[keys[1]];
   const [sA, sB] = state.scores[id];
   const locked = !!state.locked[id];
   const isDecided = Math.max(sA, sB) >= WIN_TARGET;
@@ -423,9 +450,9 @@ function renderModal(){
   const capB = sA >= WIN_TARGET ? MAX_LOSE : WIN_TARGET;
 
   const rows = POS.map(p => `<div class="pos-row">
-      <div class="p-name" style="color:${tA.text}">${tA.roster[p]}</div>
+      ${playerCell(keys[0], tA.roster[p])}
       <div class="pos">${p}</div>
-      <div class="p-name" style="color:${tB.text}">${tB.roster[p]}</div>
+      ${playerCell(keys[1], tB.roster[p])}
     </div>`).join("");
 
   document.getElementById("modal").innerHTML = `
