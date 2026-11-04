@@ -1,0 +1,4 @@
+# 本地工程数据 / 发布产物，不进仓库
+.workbuddy/
+*.genie
+__pycache__/
