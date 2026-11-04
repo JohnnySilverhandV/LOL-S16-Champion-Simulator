@@ -98,7 +98,7 @@
   }
   .team-row+.team-row{border-top:1px dashed rgba(255,255,255,.08)}
   .team-row .tname{font-size:15px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:7px;min-width:0}
-  .team-row .tname .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .team-row .tname .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
   .team-row .tscore{font-size:17px;font-weight:800;min-width:22px;text-align:center;color:var(--dim);font-variant-numeric:tabular-nums}
   .team-row.win .tscore{color:var(--win);text-shadow:0 0 10px rgba(92,255,157,.6)}
   .team-row.win .tname{color:var(--win)}
@@ -111,13 +111,19 @@
   /* 冠军卡 */
   .champ-col{flex:.85;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
   .champ{
-    background:linear-gradient(160deg,rgba(255,210,87,.12),rgba(255,46,196,.08));
-    border:1px solid rgba(255,210,87,.4);border-radius:18px;text-align:center;
-    padding:32px 16px;backdrop-filter:blur(16px);box-shadow:0 0 50px rgba(255,210,87,.15);
+    background:linear-gradient(160deg,rgba(214,226,242,.14),rgba(120,160,255,.08));
+    border:1px solid rgba(206,220,238,.45);border-radius:18px;text-align:center;
+    padding:32px 16px;backdrop-filter:blur(16px);box-shadow:0 0 50px rgba(198,214,236,.16);
   }
-  .champ .trophy{font-size:48px;filter:drop-shadow(0 0 14px rgba(255,210,87,.7));animation:glow 2.4s ease-in-out infinite}
+  .champ .trophy{
+    font-size:48px;
+    filter:grayscale(1) brightness(1.62) contrast(.92)
+           drop-shadow(0 0 6px rgba(255,255,255,.55))
+           drop-shadow(0 0 18px rgba(190,208,232,.65));
+    animation:glow 2.4s ease-in-out infinite;
+  }
   @keyframes glow{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-  .champ .label{color:var(--gold);letter-spacing:4px;font-size:12px;margin:12px 0 6px}
+  .champ .label{color:#cfdcf0;letter-spacing:4px;font-size:12px;margin:12px 0 6px}
   .champ .name{font-size:30px;font-weight:900;letter-spacing:2px;word-break:break-all}
   .champ .name.empty{color:var(--dim);font-size:18px;font-weight:400;letter-spacing:2px}
   .champ .sub{color:var(--dim);font-size:11px;margin-top:10px;letter-spacing:1px;line-height:1.6}
@@ -246,15 +252,16 @@
 
 <script>
 /* ================= 数据 ================= */
+/* dot: 圆点背景；glow: 光晕；text: 文字可读色 */
 const TEAMS = {
-  TES : {name:"TES",  color:"#ff4b2e", roster:{上路:"369",打野:"Tian",中路:"Creme",下路:"JackeyLove",辅助:"Zhuo"}},
-  IG  : {name:"IG",   color:"#3ac2ff", roster:{上路:"TheShy",打野:"Wei",中路:"Rookie",下路:"JiaQi",辅助:"Meiko"}},
-  GEN : {name:"GEN",  color:"#c9a227", roster:{上路:"Kiin",打野:"Canyon",中路:"Chovy",下路:"Ruler",辅助:"Duro"}},
-  LYON: {name:"LYON", color:"#7bd389", roster:{上路:"Dhokla",打野:"Inspired",中路:"Saint",下路:"Berserker",辅助:"Isles"}},
-  DK  : {name:"DK",   color:"#5ac8fa", roster:{上路:"Siwoo",打野:"Lucid",中路:"ShowMaker",下路:"Smash",辅助:"Career"}},
-  BLG : {name:"BLG",  color:"#9b7bff", roster:{上路:"Bin",打野:"Xun",中路:"Knight",下路:"Viper",辅助:"ON"}},
-  T1  : {name:"T1",   color:"#ff2e4c", roster:{上路:"Doran",打野:"Oner",中路:"Faker",下路:"Peyz",辅助:"Keria"}},
-  KC  : {name:"KC",   color:"#00c2a8", roster:{上路:"Canna",打野:"Yike",中路:"kyeahoo",下路:"Caliste",辅助:"Busio"}},
+  TES : {name:"TES",  dot:"#ff5a1f", glow:"rgba(255,90,31,.75)", text:"#ff7a3c", roster:{上路:"369",打野:"Tian",中路:"Creme",下路:"JackeyLove",辅助:"Zhuo"}},
+  IG  : {name:"IG",   dot:"#ffffff", glow:"rgba(255,255,255,.8)", text:"#ffffff", roster:{上路:"TheShy",打野:"Wei",中路:"Rookie",下路:"JiaQi",辅助:"Meiko"}},
+  GEN : {name:"GEN",  dot:"linear-gradient(90deg,#c8a22a 0 50%,#0d0d0f 50% 100%)", glow:"rgba(200,162,42,.7)", text:"#d8b74a", roster:{上路:"Kiin",打野:"Canyon",中路:"Chovy",下路:"Ruler",辅助:"Duro"}},
+  LYON: {name:"LYON", dot:"#ffc300", glow:"rgba(255,195,0,.8)", text:"#ffcf3d", roster:{上路:"Dhokla",打野:"Inspired",中路:"Saint",下路:"Berserker",辅助:"Isles"}},
+  DK  : {name:"DK",   dot:"#0b0b0d", glow:"rgba(150,162,182,.55)", text:"#d5dced", roster:{上路:"Siwoo",打野:"Lucid",中路:"ShowMaker",下路:"Smash",辅助:"Career"}},
+  BLG : {name:"BLG",  dot:"radial-gradient(circle at 72% 28%,#ff5ec4 0 36%,#6fd0ff 46% 100%)", glow:"rgba(111,208,255,.75)", text:"#7fd4ff", roster:{上路:"Bin",打野:"Xun",中路:"Knight",下路:"Viper",辅助:"ON"}},
+  T1  : {name:"T1",   dot:"#ff0000", glow:"rgba(255,0,0,.8)", text:"#ff3a3a", roster:{上路:"Doran",打野:"Oner",中路:"Faker",下路:"Peyz",辅助:"Keria"}},
+  KC  : {name:"KC",   dot:"#9fe4ff", glow:"rgba(159,228,255,.8)", text:"#a8e6ff", roster:{上路:"Canna",打野:"Yike",中路:"kyeahoo",下路:"Caliste",辅助:"Busio"}},
 };
 const POS = ["上路","打野","中路","下路","辅助"];
 
@@ -313,10 +320,10 @@ function buildState(scores){
 
 /* ================= 渲染 ================= */
 function teamHtml(key, score, isWin, isLose){
-  if(!key) return `<div class="team-row pending"><span class="tname"><span class="dot" style="background:#3a4468"></span>待定</span><span class="tscore">-</span></div>`;
+  if(!key) return `<div class="team-row pending"><span class="tname"><span class="dot" style="background:#3a4468;box-shadow:0 0 0 1px rgba(255,255,255,.14)"></span>待定</span><span class="tscore">-</span></div>`;
   const t = TEAMS[key];
   return `<div class="team-row ${isWin?'win':''} ${isLose?'lose':''}">
-    <span class="tname"><span class="dot" style="background:${t.color};box-shadow:0 0 8px ${t.color}"></span>${t.name}</span>
+    <span class="tname"><span class="dot" style="background:${t.dot};box-shadow:0 0 0 1px rgba(255,255,255,.28), 0 0 8px ${t.glow}"></span>${t.name}</span>
     <span class="tscore">${score}</span></div>`;
 }
 
@@ -416,9 +423,9 @@ function renderModal(){
   const capB = sA >= WIN_TARGET ? MAX_LOSE : WIN_TARGET;
 
   const rows = POS.map(p => `<div class="pos-row">
-      <div class="p-name" style="color:${tA.color}">${tA.roster[p]}</div>
+      <div class="p-name" style="color:${tA.text}">${tA.roster[p]}</div>
       <div class="pos">${p}</div>
-      <div class="p-name" style="color:${tB.color}">${tB.roster[p]}</div>
+      <div class="p-name" style="color:${tB.text}">${tB.roster[p]}</div>
     </div>`).join("");
 
   document.getElementById("modal").innerHTML = `
@@ -427,9 +434,9 @@ function renderModal(){
       <span class="close" onclick="closeModal()">✕</span>
     </div>
     <div class="vs-banner">
-      <div class="side" style="color:${tA.color}"><small>${tA.name}</small>${sA}</div>
+      <div class="side" style="color:${tA.text}"><small>${tA.name}</small>${sA}</div>
       <div class="vs">VS</div>
-      <div class="side" style="color:${tB.color}"><small>${tB.name}</small>${sB}</div>
+      <div class="side" style="color:${tB.text}"><small>${tB.name}</small>${sB}</div>
     </div>
     <div class="roster">${rows}</div>
     <div class="score-zone">
