@@ -85,6 +85,10 @@
   .match.locked{border-color:rgba(255,210,87,.45)}
   .match.locked:hover{border-color:var(--gold);box-shadow:0 10px 36px rgba(255,210,87,.2)}
   .match.locked-dim{opacity:.5}
+  /* 官方已完赛：青色边框，区别于手动锁定的金色 */
+  .match.fixed{border-color:rgba(0,229,255,.42);box-shadow:0 8px 32px rgba(0,229,255,.12)}
+  .match.fixed:hover{border-color:var(--cyan);box-shadow:0 10px 36px rgba(0,229,255,.26)}
+  .m-head .final{color:#7fe9ff;white-space:nowrap}
   .m-head{
     display:flex;justify-content:space-between;align-items:center;gap:6px;
     padding:8px 12px;font-size:10px;color:var(--dim);letter-spacing:.5px;
@@ -107,6 +111,7 @@
   .m-foot{padding:6px 12px 8px;font-size:10px;color:var(--dim);letter-spacing:1px;display:flex;justify-content:space-between;gap:6px}
   .m-foot .tip{color:rgba(0,229,255,.7);white-space:nowrap}
   .m-foot .tip.gold{color:rgba(255,210,87,.8)}
+  .m-foot .tip.final{color:rgba(127,233,255,.9);white-space:nowrap}
 
   /* 冠军卡 */
   .champ-col{flex:.85;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
@@ -205,6 +210,10 @@
     margin:0 4px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.7;
     background:rgba(255,210,87,.08);border:1px solid rgba(255,210,87,.3);color:var(--gold);text-align:center;
   }
+  .locked-note.fixed-note{
+    background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.34);color:#8fe8ff;
+  }
+  .locked-note b{font-size:14px;letter-spacing:1px}
   .shake{animation:shake .3s}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
@@ -247,7 +256,7 @@
 
 <header>
   <h1>S16 全球总决赛 · 淘汰赛模拟</h1>
-  <p>点击对阵 → 修改 5v5 对位与比分 → 确认即锁定 · 胜者自动晋级</p>
+  <p>11月04日 TES 1 : 3 IG 已完赛（IG 晋级）· 其余场次可模拟 · 确认即锁定</p>
 </header>
 
 <div class="timeline" id="timeline"></div>
@@ -290,17 +299,37 @@ const LINK = {qf1:["sf1",0], qf2:["sf1",1], qf3:["sf2",0], qf4:["sf2",1], sf1:["
 const WIN_TARGET = 3;   // BO5 胜者需 3 胜
 const MAX_LOSE   = 2;   // 败者最多 2 胜，杜绝 3:3
 
+/* 官方已完赛结果：写死，不可模拟、不可解锁、重置也不清空 */
+/* 下标对应 MATCHES[id].teams 顺序：qf1 = ["TES","IG"] → [TES分, IG分] */
+const FIXED = {
+  qf1: [1, 3],   // 11月04日 TES 1 : 3 IG —— IG 晋级半决赛
+};
+
 /* ================= 状态 ================= */
 const EMPTY_SCORES = {qf1:[0,0],qf2:[0,0],qf3:[0,0],qf4:[0,0],sf1:[0,0],sf2:[0,0],fin:[0,0]};
 function blank(){
-  return {
+  const st = {
     scores: JSON.parse(JSON.stringify(EMPTY_SCORES)),
     teams: {qf1:["TES","IG"],qf2:["GEN","LYON"],qf3:["DK","BLG"],qf4:["T1","KC"],sf1:[null,null],sf2:[null,null],fin:[null,null]},
     locked: {},
     champion: null
   };
+  return applyFixed(st);
 }
-let state = load() || blank();
+/* 把官方赛果强制写进状态（覆盖旧存档里的旧比分） */
+function applyFixed(st){
+  for(const id in FIXED){
+    if(!st.scores) st.scores = JSON.parse(JSON.stringify(EMPTY_SCORES));
+    if(!st.scores[id]) st.scores[id] = [0,0];
+    st.scores[id] = FIXED[id].slice();
+    st.locked = st.locked || {};
+    st.locked[id] = true;
+  }
+  return st;
+}
+function isFixed(id){ return Object.prototype.hasOwnProperty.call(FIXED, id); }
+
+let state = applyFixed(load() || blank());
 
 function save(){ try{ localStorage.setItem("s16bracket_v2", JSON.stringify(state)); }catch(e){} }
 function load(){
@@ -365,12 +394,15 @@ function render(){
       const tA = state.teams[m.id][0], tB = state.teams[m.id][1];
       const w = built.winners[m.id];
       const ready = !!(tA && tB);
+      const fixed = isFixed(m.id);
       const locked = !!state.locked[m.id];
-      html += `<div class="match ${ready?'':'locked-dim'} ${locked?'locked':''}" data-mid="${m.id}" onclick="openMatch('${m.id}')">
-        <div class="m-head"><span>${m.stage}</span><span class="${locked?'lock':'badge'}">${locked?'🔒 已锁定':m.time}</span></div>
+      const headRight = fixed ? '🏁 已完赛' : (locked ? '🔒 已锁定' : m.time);
+      const footTip  = fixed ? '官方赛果 · 不可修改' : (locked ? '点击查看' : (ready ? '点击模拟 ▸' : ''));
+      html += `<div class="match ${ready?'':'locked-dim'} ${locked?'locked':''} ${fixed?'fixed':''}" data-mid="${m.id}" onclick="openMatch('${m.id}')">
+        <div class="m-head"><span>${m.stage}</span><span class="${fixed?'final':(locked?'lock':'badge')}">${headRight}</span></div>
         ${teamHtml(tA, s[0], w && w===tA, w && w!==tA)}
         ${teamHtml(tB, s[1], w && w===tB, w && w!==tB)}
-        <div class="m-foot"><span>BO5</span><span class="tip ${locked?'gold':''}">${locked?'点击查看':(ready?'点击模拟 ▸':'')}</span></div>
+        <div class="m-foot"><span>BO5</span><span class="tip ${fixed?'final':(locked?'gold':'')}">${footTip}</span></div>
       </div>`;
     }
     html += `</div>`;
@@ -445,6 +477,7 @@ function renderModal(){
   const tA = TEAMS[keys[0]], tB = TEAMS[keys[1]];
   const [sA, sB] = state.scores[id];
   const locked = !!state.locked[id];
+  const fixed = isFixed(id);
   const isDecided = Math.max(sA, sB) >= WIN_TARGET;
   const capA = sB >= WIN_TARGET ? MAX_LOSE : WIN_TARGET;
   const capB = sA >= WIN_TARGET ? MAX_LOSE : WIN_TARGET;
@@ -454,6 +487,26 @@ function renderModal(){
       <div class="pos">${p}</div>
       ${playerCell(keys[1], tB.roster[p])}
     </div>`).join("");
+
+  const scoreZone = fixed
+    ? `<div class="score-zone">
+        <div class="score-ctl"><div class="num" style="color:${sA>sB?'var(--win)':'var(--dim)'}">${sA}</div></div>
+        <div class="colon">:</div>
+        <div class="score-ctl"><div class="num" style="color:${sB>sA?'var(--win)':'var(--dim)'}">${sB}</div></div>
+      </div>`
+    : `<div class="score-zone">
+      <div class="score-ctl">
+        <button onclick="chScore(0,-1)" ${locked || sA<=0?'disabled':''}>−</button>
+        <div class="num ${sA===0?'s0':''}">${sA}</div>
+        <button onclick="chScore(0,1)" ${locked || sA>=capA?'disabled':''}>＋</button>
+      </div>
+      <div class="colon">:</div>
+      <div class="score-ctl">
+        <button onclick="chScore(1,-1)" ${locked || sB<=0?'disabled':''}>−</button>
+        <div class="num ${sB===0?'s0':''}">${sB}</div>
+        <button onclick="chScore(1,1)" ${locked || sB>=capB?'disabled':''}>＋</button>
+      </div>
+    </div>`;
 
   document.getElementById("modal").innerHTML = `
     <div class="modal-head">
@@ -466,31 +519,21 @@ function renderModal(){
       <div class="side" style="color:${tB.text}"><small>${tB.name}</small>${sB}</div>
     </div>
     <div class="roster">${rows}</div>
-    <div class="score-zone">
-      <div class="score-ctl">
-        <button onclick="chScore(0,-1)" ${locked || sA<=0?'disabled':''}>−</button>
-        <div class="num ${sA===0?'s0':''}">${sA}</div>
-        <button onclick="chScore(0,1)" ${locked || sA>=capA?'disabled':''}>＋</button>
-      </div>
-      <div class="colon">:</div>
-      <div class="score-ctl">
-        <button onclick="chScore(1,-1)" ${locked || sB<=0?'disabled':''}>−</button>
-        <div class="num ${sB===0?'s0':''}">${sB}</div>
-        <button onclick="chScore(1,1)" ${locked || sB>=capB?'disabled':''}>＋</button>
-      </div>
-    </div>
+    ${scoreZone}
     <div class="confirm-zone">
-      ${locked ? '' : '<div class="bet-tip">BO5：先到 3 胜者晋级，败方最多 2 分</div>'}
-      ${locked
-        ? `<div class="locked-note">本场比分已锁定（${sA} : ${sB}），结果不可修改。<br>如确须修改，请先解锁。</div>
-           <div style="margin-top:14px"><button class="ghost" onclick="unlock('${id}')">🔓 解锁本场</button></div>`
-        : `<button class="primary" onclick="confirmScore()" ${isDecided?'':'disabled'}>确认比分并锁定</button>`}
+      ${fixed
+        ? `<div class="locked-note fixed-note">🏁 本场已于 ${m.time.split(" ")[0]} 结束<br>官方赛果 <b>${tA.name} ${sA} : ${sB} ${tB.name}</b><br>比分已固定，不可模拟、不可修改</div>`
+        : locked
+          ? `<div class="locked-note">本场比分已锁定（${sA} : ${sB}），结果不可修改。<br>如确须修改，请先解锁。</div>
+             <div style="margin-top:14px"><button class="ghost" onclick="unlock('${id}')">🔓 解锁本场</button></div>`
+          : `<div class="bet-tip">BO5：先到 3 胜者晋级，败方最多 2 分</div>
+             <button class="primary" onclick="confirmScore()" ${isDecided?'':'disabled'}>确认比分并锁定</button>`}
       <div class="warn" id="warn"></div>
     </div>`;
 }
 
 function chScore(i, d){
-  if(state.locked[curId]) return;
+  if(state.locked[curId] || isFixed(curId)) return;
   const s = state.scores[curId];
   const other = s[1 - i];
   const cap = other >= WIN_TARGET ? MAX_LOSE : WIN_TARGET;   // 对手已拿 3 胜，本方最多 2
@@ -501,6 +544,7 @@ function chScore(i, d){
 }
 
 function confirmScore(){
+  if(isFixed(curId)) return;
   const warn = document.getElementById("warn");
   const [a, b] = state.scores[curId];
 
@@ -537,6 +581,7 @@ function confirmScore(){
 }
 
 function unlock(id){
+  if(isFixed(id)) return;   // 官方赛果不可解锁
   if(!window.confirm("解锁后该场比分可重新修改，确定解锁？")) return;
   delete state.locked[id];
   save(); render(); renderModal();
@@ -550,7 +595,7 @@ document.getElementById("overlay").addEventListener("click", e => { if(e.target.
 document.addEventListener("keydown", e => { if(e.key === "Escape") closeModal(); });
 
 function resetAll(){
-  if(!window.confirm("重置将清空全部比分与锁定状态，确定？")) return;
+  if(!window.confirm("重置将清空未固定场次的比分与锁定状态（已完赛场次保留官方赛果），确定？")) return;
   state = blank(); save(); render();
 }
 
