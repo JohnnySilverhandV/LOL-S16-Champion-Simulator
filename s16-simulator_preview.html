@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>公众号预览 - 从一张八强截图到可玩的 S16 冠军模拟器：单文件 HTML 的级联状态机设计</title>
+<style>
+  body{margin:0;background:#ededed;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;}
+  .bar{position:sticky;top:0;background:#07c160;color:#fff;padding:10px 16px;
+        font-size:14px;z-index:9;display:flex;align-items:center;justify-content:space-between;}
+  .bar button{background:#fff;color:#07c160;border:none;border-radius:14px;
+        padding:6px 14px;font-size:13px;font-weight:bold;cursor:pointer;}
+  .phone{width:375px;margin:16px auto 40px;background:#fff;min-height:667px;
+          padding:16px;box-sizing:border-box;border-radius:4px;}
+  .phone *{max-width:100%!important;box-sizing:border-box;}
+  .tip{max-width:375px;margin:0 auto;color:#999;font-size:12px;padding:0 4px 30px;}
+  #copied{color:#ffd;font-size:12px;margin-left:8px;}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span>📱 公众号移动端预览（375px）· 所见即所得</span>
+    <span><button onclick="copyContent()">📋 复制全文</button><span id="copied"></span></span>
+  </div>
+  <div class="phone" id="phone">
+  <div id="copy-target">
+<section id="content" style="font-size:15px;color:#3f3f3f;line-height:1.85;letter-spacing:.3px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;word-break:break-word;"><h1 style="font-size:21px;color:#222;font-weight:bold;margin:24px 0 16px;line-height:1.4">从一张八强截图到可玩的 S16 冠军模拟器：单文件 HTML 的级联状态机设计</h1>
+<blockquote style="background-color:#f7f8fc;border-left:4px solid #667eea;padding:14px 16px;margin:18px 0;color:#555;border-radius:6px">
+<p style="margin:0 0 16px;line-height:1.9">本文记录一个真实小项目的完整过程：用户给了一张 S16 全球总决赛八强对阵截图，要求做一个<strong>可模拟、可调比分、锁定赛果</strong>的淘汰赛对阵图。最终交付是一个约 640 行的单文件 HTML，零依赖，同步到了 GitHub、码云双仓库与三种在线入口。文章不讲流水账，只讲设计决策和真实踩坑。</p>
+</blockquote>
+<p style="margin:0 0 16px;line-height:1.9"><strong>在线试玩</strong>：https://s16-champion-simulator.app.workbuddy.host/?sharecode=VUYT4KG5HD<br/>
+<strong>源码仓库</strong>：https://github.com/JohnnySilverhandV/LOL-S16-Champion-Simulator （码云同名仓库同步）</p>
+<hr style="border:none;border-top:1px solid #eee;margin:26px 0"/>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">一、需求里藏着的三个难点</h2>
+<p style="margin:0 0 16px;line-height:1.9">需求一句话：八强固定，用户猜四强、选赢家、调比分，最后决出冠军；点击对阵弹出 5v5 对位（上路 Theshy 对 369 这种）；界面要毛玻璃。</p>
+<p style="margin:0 0 16px;line-height:1.9">听起来像个静态页面，实际有三个难点：</p>
+<ol>
+<li><strong>级联一致性</strong>：改了四分之一决赛的比分，半决赛、决赛的参赛队伍必须跟着变——手工管理极易出现"前面改了后面没变"的脏数据</li>
+<li><strong>锁定与冲突</strong>：比分确认后要锁定防误改，但改上游比分可能悄悄改变某场已锁定比赛的参赛队伍</li>
+<li><strong>赛果与模拟的分离</strong>：真实比赛打完后（TES 1:3 IG），该场要从"模拟"变成"事实"，不可修改、重置也不能清掉</li>
+</ol>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">二、核心设计：<code>buildState()</code> 纯函数</h2>
+<p style="margin:0 0 16px;line-height:1.9">整个淘汰赛是一棵树。我的方案是把"参赛队伍"从状态里拿掉，改为<strong>由比分实时推导</strong>：</p>
+<pre><code>const LINK = {qf1:["sf1",0], qf2:["sf1",1], qf3:["sf2",0],
+              qf4:["sf2",1], sf1:["fin",0], sf2:["fin",1]};
+
+function buildState(scores){
+  const teams = {}, winners = {};
+  for(const m of MATCHES){
+    if(m.round === 0){
+      teams[m.id] = m.teams.slice();          // 首轮种子固定
+    }else{
+      teams[m.id] = Object.entries(LINK)      // 下游队伍 = 上游胜者
+        .filter(([, v]) =&gt; v[0] === m.id)
+        .map(([src]) =&gt; winners[src] || null);
+    }
+    const [a, b] = scores[m.id] || [0, 0];
+    const decided = a !== b &amp;&amp; Math.max(a, b) &gt;= WIN_TARGET;  // BO5：先到 3
+    winners[m.id] = decided ? teams[m.id][a &gt; b ? 0 : 1] : null;
+  }
+  return {teams, winners, champion: winners.fin || null};
+}
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9"><code>state</code> 里只存比分和锁定标记，<strong>队伍、胜者、冠军全部是比分 skyline 的投影</strong>。好处是数据永远自洽：不存在"比分改了队伍没跟上"的可能。</p>
+<p style="margin:0 0 16px;line-height:1.9">锁定冲突检测也顺理成章：确认比分前，用<strong>克隆的比分</strong>跑一遍 <code>buildState</code>，对比每场已锁定比赛的队伍是否变化——变了就拦截：</p>
+<pre><code>const built = buildState(JSON.parse(JSON.stringify(state.scores)));
+for(const m of MATCHES){
+  if(!state.locked[m.id] || m.id === curId) continue;
+  if(JSON.stringify(state.teams[m.id]) !== JSON.stringify(built.teams[m.id])){
+    warn.textContent = `${m.stage}已锁定，修改本场会改变其参赛队伍，请先解锁该场`;
+    return;   // 拒绝写入
+  }
+}
+</code></pre>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">三、官方赛果：事实和输入要分层</h2>
+<p style="margin:0 0 16px;line-height:1.9">BO5 规则（先到 3、败方最多 2、杜绝 3:3）是第一版就写错的，这里给正确姿势：</p>
+<pre><code>const cap = other &gt;= WIN_TARGET ? MAX_LOSE : WIN_TARGET;  // 对手到 3，我最多 2
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9">真实比赛打完后，需求升级为"这场不能模拟了"。最初的锁定机制是用户可解锁的，官方赛果必须更强——<strong>放常量，不放存档</strong>：</p>
+<pre><code>/* 官方已完赛结果：不可模拟、不可解锁、重置也不清空 */
+const FIXED = {
+  qf1: [1, 3],   // teams 顺序是 ["TES","IG"] → TES 1 分，IG 3 分
+};
+
+function applyFixed(st){
+  for(const id in FIXED){
+    st.scores[id] = FIXED[id].slice();
+    st.locked[id] = true;
+  }
+  return st;
+}
+let state = applyFixed(load() || blank());   // 每次加载都强制覆盖
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9">加载时单向覆盖存档，老用户哪怕存过完全不同的比分，打开页面即被修正。后续每轮比赛打完，只需往 <code>FIXED</code> 加一行。</p>
+<p style="margin:0 0 16px;line-height:1.9">三层拦截缺一不可：<strong>不渲染</strong>比分按钮和解锁入口（而不是 disabled，避免"看起来能点"）、修改函数直接 return、弹窗文案明示"官方赛果不可修改"。视觉上官方完赛用青色边框 + 🏁，与手动锁定的金色 🔒 区分。</p>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">四、连接线：量布局画 SVG，别用 CSS 硬拼</h2>
+<p style="margin:0 0 16px;line-height:1.9">轮次之间的晋级连线，正确做法是渲染完成后实测 DOM 坐标画肘形 path：</p>
+<pre><code>const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+const x1 = ra.right - wr.left, y1 = ra.top + ra.height/2 - wr.top;
+const x2 = rb.left - wr.left,  y2 = rb.top + rb.height/2 - wr.top;
+d += `&lt;path class="link ${state.locked[src]?'active':''}"
+       d="M${x1} ${y1} H${mx} V${y2} H${x2}"/&gt;`;
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9">窗口缩放时防抖 160ms 重绘。已锁定的晋级链路加 <code>active</code> 类点亮发光。这样列宽、卡片高度随内容变化都不会错位——伪元素拼边界那种写法，卡片一换行就露馅。</p>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">五、视觉细节里的两个坑</h2>
+<p style="margin:0 0 16px;line-height:1.9"><strong>1. 纯黑文字在深色毛玻璃上会隐身。</strong> 用户要求 DK 队员名"黑色"，直接 <code>color:#000</code> 就是隐身。解法是加极细的浅色描边：</p>
+<pre><code>.p-name.dk-name{color:#0a0a0c;filter:drop-shadow(0 0 1.2px rgba(255,255,255,.65))}
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9"><strong>2. 渐变文字加不了 text-shadow。</strong> GEN 名字"左半暗黄右半黑"用 <code>background-clip:text</code> + <code>color:transparent</code>，此时 <code>text-shadow</code> 会失效（shadow 画在透明文字后面整个露出来），只能用 <code>filter: drop-shadow()</code>。</p>
+<p style="margin:0 0 16px;line-height:1.9"><strong>3. emoji 改不了色。</strong> 银色奖杯的需求，🏆 本身是金色 emoji，用滤镜转银：</p>
+<pre><code>.trophy{filter:grayscale(1) brightness(1.62) contrast(.92)
+        drop-shadow(0 0 6px rgba(255,255,255,.55));}
+</code></pre>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">六、发布：双仓库 + 三入口，一次做全</h2>
+<p style="margin:0 0 16px;line-height:1.9">写完代码只是交付的一半，让不同渠道的读者都能打开才是完成态：</p>
+<table style="width:100%;border-collapse:collapse;margin:18px 0;font-size:14px">
+<thead>
+<tr>
+<th style="background-color:#667eea;color:#fff;padding:10px 12px;text-align:left;font-weight:600">渠道</th>
+<th style="background-color:#667eea;color:#fff;padding:10px 12px;text-align:left;font-weight:600">用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">WorkBuddy 托管</td>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">国内直连，发给朋友点开就玩</td>
+</tr>
+<tr>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">GitHub Pages</td>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">开发者入口，push 自动更新</td>
+</tr>
+<tr>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">GitHub + 码云 Release</td>
+<td style="border:1px solid #eee;padding:9px 12px;color:#333">双平台离线下载（各 5 个版本）</td>
+</tr>
+</tbody>
+</table>
+<p style="margin:0 0 16px;line-height:1.9">码云同步的配置：</p>
+<pre><code>git remote set-url --add --push origin &lt;github-url&gt;
+git remote set-url --add --push origin &lt;gitee-url&gt;
+git push origin main   # 一条命令推两边
+</code></pre>
+<p style="margin:0 0 16px;line-height:1.9">两个真实坑：</p>
+<ul>
+<li><strong>GitHub 仓库名不支持中文</strong>：API 建 <code>LOL-S16-冠军模拟器</code> 返回 201，但 <code>full_name</code> 变成 <code>LOL-S16--</code>，中文字符被静默剔除，必须回读验证</li>
+<li><strong>代理抖动时用 API 域名兜底</strong>：某天代理对 <code>github.com</code> 主站 CONNECT 成功率只剩 1/3，但 <code>api.github.com</code> 一直稳定——git push 走不通时，用 <code>PUT /repos/{o}/{r}/contents/README.md</code> 直接更新文件，再 <code>fetch + rebase</code> 收敛历史</li>
+</ul>
+<h2 style="font-size:19px;color:#222;font-weight:bold;padding-left:12px;border-left:5px solid #667eea;margin:28px 0 16px;line-height:1.4">七、可复用的结论</h2>
+<ol>
+<li><strong>赛事模拟器通用骨架</strong>：固定首轮种子 + LINK 映射 + 纯函数级联重算，8 强/16 强/双败赛制都能套</li>
+<li><strong>派生数据不要存</strong>：队伍、胜者、冠军全部由比分推导，脏数据问题彻底消除</li>
+<li><strong>官方事实数据放常量、用户输入放存档</strong>，加载时单向覆盖</li>
+<li><strong>锁定冲突用纯函数试算</strong>，比事后回滚干净得多</li>
+<li><strong>发布渠道一次做全</strong>：托管链接给不折腾的用户，仓库给开发者，Release 给要离线的人</li>
+</ol>
+<p style="margin:0 0 16px;line-height:1.9">项目完整的技术复盘（含 ima 知识库版笔记）已同步维护。有问题欢迎评论区交流。</p></section>
+  </div>
+  </div>
+  <div class="tip">说明：渐变/阴影等公众号不支持的样式已退化为兼容写法。点击「复制全文」后，到公众号编辑器 Ctrl+V 即可。</div>
+<script>
+/* 复制即所得：#copy-target 内的 HTML 已由 Python 管道完全清洗
+   （div→section、渐变→实色、剥 px 宽度、拆 UI 外壳、style 内联、零 script/style），
+   这里只把已干净的 HTML 写剪贴板，不做任何浏览器内转换——
+   因此不存在 JS 转义坑、也没有会崩的转换逻辑。 */
+function copyContent(){
+  var node = document.getElementById("copy-target");
+  if(!node){ var c=document.getElementById("copied"); if(c)c.textContent="复制失败"; return; }
+  var html = node.innerHTML;
+  var plain = node.innerText;
+  var tip = document.getElementById("copied");
+  function done(msg){ if(tip)tip.textContent=msg; }
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      var htmlBlob=new Blob([html],{type:"text/html"});
+      var textBlob=new Blob([plain],{type:"text/plain"});
+      navigator.clipboard.write([new ClipboardItem({"text/html":htmlBlob,"text/plain":textBlob})])
+        .then(function(){done("已复制 ✅");}).catch(function(){fallback();});
+      return;
+    }
+  }catch(e){}
+  fallback();
+  function fallback(){
+    var tmp=document.createElement("div");
+    tmp.style.position="fixed";tmp.style.left="-9999px";
+    tmp.innerHTML=html;
+    document.body.appendChild(tmp);
+    try{
+      var r=document.createRange();r.selectNodeContents(tmp);
+      var s=window.getSelection();s.removeAllRanges();s.addRange(r);
+      document.execCommand("copy");done("已复制 ✅");
+    }catch(e){done("复制失败，请手动 Ctrl+A");}
+    s.removeAllRanges();
+    document.body.removeChild(tmp);
+  }
+}</script>
+</body>
+</html>
