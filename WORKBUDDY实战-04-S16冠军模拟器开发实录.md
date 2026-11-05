@@ -4,7 +4,7 @@
 
 本篇是案例篇：只记这个项目的迭代过程与踩过的坑。流程、发版、双远端配置、平台级通用结论看《WORKBUDDY实战-00-流程手册与案例索引》。
 
-**更新点（v3，2026-11-05）：官方赛果第二条入库（GEN 3:0 LYON）——FIXED 机制第二次实战，验证了「每轮加一行」的维护成本承诺；v2（2026-11-04）：平台级内容迁出至 00 篇；v1：从 v1.0 复盘到 v1.2.0。**
+**更新点（v4，2026-11-05）：官方赛果自动化落地——接入 LoL Esports 官方接口（esports-api.lolesports.com），新增 `sync_scores.py` 一键同步 FIXED 与副标题，并配每日定时自动化；v3（2026-11-05）：官方赛果第二条入库（GEN 3:0 LYON）；v2（2026-11-04）：平台级内容迁出至 00 篇；v1：从 v1.0 复盘到 v1.2.0。**
 
 项目：LOL-S16-Champion-Simulator
 产出：单文件 HTML 对阵模拟器 · GitHub + 码云双仓库 · 双平台 Release · WorkBuddy 托管 · localStorage 存档
@@ -21,7 +21,8 @@
 |Gitee（国内直连）|https://gitee.com/johnny-silver-hand123/LOL-S16-Champion-Simulator|
 |Release|双平台（v1.0.0 ~ v1.2.1，最新版附 HTML）|
 |代码量|约 640 行，状态机与渲染分离|
-|官方赛果进度|qf1 ✅ TES 1:3 IG · qf2 ✅ GEN 3:0 LYON · 其余待赛|
+|官方赛果进度|qf1 ✅ TES 1:3 IG · qf2 ✅ GEN 3:0 LYON · qf3/qf4/SF 待赛|
+|赛果自动化|`sync_scores.py`（LoL Esports 官方接口）+ 每日 10:00 定时任务|
 
 
 ## 一、可复用结论（本项目产出）
@@ -34,6 +35,7 @@
 - 配色迭代用版本号切片（v1.1.0 功能 / v1.1.1 圆点 / v1.1.2 名字），每次一个 commit + 一个 Release，回滚成本极低。
 - 平台级（中文仓库名、SSL、代理、Contents API 兜底）已并入 00 篇 §七，本篇不再重复。
 - **官方赛果逐轮入库的运维模式（v1.2.1 实战验证）**：用户只报比分「GEN 3:0 LYON」，改动 = FIXED 加一行 + 顶部副标题加半句，全程 5 分钟；第二次执行时无需重新设计任何东西。这类「为后续同类更新预留的接口」值得在首版就设计好。
+- **赛事比分有官方接口就别手抄（v4 验证）**：`https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=zh-CN&leagueId=98767975604431411` + 请求头 `x-api-key: 0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z`（官网前端公开 key，国内可直连），返回赛程、state（unstarted/inprogress/completed）与 gameWins，数据比用户口播更准还带 UTC 时间。
 
 ## 二、需求拆解
 
@@ -126,6 +128,17 @@
 - 托管链接不变自动更新；仓库推送待用户确认（v1.2.1 tag + 双平台 Release）
 
 **这次的价值不在代码（只有两行），而在验证 v1.2.0 的设计承诺**：「每轮打完加一行」——第二次执行零设计、零返工，纯数据录入。首版为后续同类更新预留接口的做法得到回报。
+
+### v1.2.2（工具链）— 官方赛果自动化：sync_scores.py + 每日定时
+
+用户嫌「每天报比分」烦，提出找官方接口。调研结论：**LoL Esports 有官方数据接口且国内直连可用**（无需登录），本机实测 200：
+
+- 端点：`GET https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=zh-CN&leagueId=98767975604431411`（Worlds），请求头 `x-api-key: 0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z`（官网前端公开 key）
+- 数据质量高：state（unstarted / inprogress / completed）、两队全名、gameWins、UTC 开赛时间全有，比口播准
+- 新增 `sync_scores.py`：拉赛程 → 官方全名映射括号代码（别名表）→ 按 LINK 推导 SF/FIN 配对 → 与 HTML 里 FIXED 对比 → 重写 FIXED 块与副标题；输出 `NO_CHANGE` / `UPDATED:` 供自动化判断
+- 配套 WorkBuddy 定时自动化：每天 10:00 跑脚本，有更新 → 自动重新托管 + 自动更新本篇笔记；**git 推送 / Release 仍留给用户确认**（对外暴露必须人眼过）
+
+**踩坑两条**：① 正则 `[^>]*` 会跨行（`\n` 不属于 `>`），贪婪匹配从 qf1 吞到 qf4，须写 `[^>\n]*`；② 「同对取最近一场」会捞到瑞士轮旧战绩（IG 与 GEN 瑞士轮交过手），必须加淘汰赛起始日期过滤（KNOCKOUT_START）。两条都在 dry-run 演练中暴露，先故意改错 qf2 再跑真实同步验证写回路径。
 
 ## 五、UI：毛玻璃 + 状态可视化
 
