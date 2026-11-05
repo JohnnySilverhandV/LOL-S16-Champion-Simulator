@@ -6,9 +6,14 @@
 >
 > 🌐 **GitHub Pages**：<https://johnnysilverhandv.github.io/LOL-S16-Champion-Simulator/s16-bracket.html>
 >
-> 🇨🇳 **码云仓库（国内直连）**：<https://gitee.com/johnny-silver-hand123/LOL-S16-Champion-Simulator>
->
 > 📦 **离线版下载**：[GitHub Releases](https://github.com/JohnnySilverhandV/LOL-S16-Champion-Simulator/releases) ｜ [码云 Releases](https://gitee.com/johnny-silver-hand123/LOL-S16-Champion-Simulator/releases)
+
+## 源码仓库
+
+| 平台 | 地址 |
+|---|---|
+| GitHub | https://github.com/JohnnySilverhandV/LOL-S16-Champion-Simulator |
+| Gitee（国内直连） | https://gitee.com/johnny-silver-hand123/LOL-S16-Champion-Simulator |
 
 ---
 
