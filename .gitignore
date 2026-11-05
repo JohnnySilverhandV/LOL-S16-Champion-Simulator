@@ -2,3 +2,10 @@
 .workbuddy/
 *.genie
 __pycache__/
+
+# 工程文件只留本地，不进仓库
+WORKBUDDY实战-*.md
+csdn-article.md
+release-notes-*.md
+release.py
+sync_scores.py
