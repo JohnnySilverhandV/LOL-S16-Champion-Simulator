@@ -256,7 +256,7 @@
 
 <header>
   <h1>S16 全球总决赛 · 淘汰赛模拟</h1>
-  <p>已完赛：11月04日 TES 1 : 3 IG（IG 晋级）· 11月05日 GEN 3 : 0 LYON（GEN 晋级）· 半决赛 IG vs GEN · 其余场次可模拟 · 确认即锁定</p>
+  <p>已完赛：11月4日 TES 1 : 3 IG（IG 晋级） · 11月5日 GEN 3 : 0 LYON（GEN 晋级） · 四分之一决赛 DK vs BLG · 四分之一决赛 T1 vs KC · 半决赛 IG vs GEN · 其余场次可模拟 · 确认即锁定</p>
 </header>
 
 <div class="timeline" id="timeline"></div>
@@ -302,8 +302,8 @@ const MAX_LOSE   = 2;   // 败者最多 2 胜，杜绝 3:3
 /* 官方已完赛结果：写死，不可模拟、不可解锁、重置也不清空 */
 /* 下标对应 MATCHES[id].teams 顺序：qf1 = ["TES","IG"] → [TES分, IG分] */
 const FIXED = {
-  qf1: [1, 3],   // 11月04日 TES 1 : 3 IG —— IG 晋级半决赛
-  qf2: [3, 0],   // 11月05日 GEN 3 : 0 LYON —— GEN 晋级半决赛
+  qf1: [1, 3],  // 11月4日 TES 1 : 3 IG —— IG 晋级
+  qf2: [3, 0],  // 11月5日 GEN 3 : 0 LYON —— GEN 晋级
 };
 
 /* ================= 状态 ================= */
